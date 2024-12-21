@@ -56,11 +56,12 @@ int launch_fontreg(char *root, int argc, char **argv){
 }
 
 int launch_emacs(char *root, int argc, char **argv){
-  char path[PATHLEN]={0}, share[PATHLEN]={0}, version[PATHLEN]={0};
+  char path[PATHLEN]={0}, share[PATHLEN]={0}, version[PATHLEN]={0}, emacsd[PATHLEN]={0};
   DIR *dir; struct dirent *entry;
   
   if(!emacs_version(root, version)) return 0;
   pathcat(share, root, 5, PLATFORM, "emacs", "share", "emacs", version);
+  pathcat(emacsd, root, 3, "all", "emacsd", "");
   if(!set_env("EMACSLOADPATH", "")) return 0;
   if(!add_env("EMACSLOADPATH", pathcat(path, root, 2, "config", ""))) return 0;
   if(!add_env("EMACSLOADPATH", pathcat(path, share, 2, "site-lisp", ""))) return 0;
@@ -100,12 +101,21 @@ int launch_emacs(char *root, int argc, char **argv){
 
   launch_fontreg(root, 0, 0);
 
-  char *rargv[argc+5];
-  add_args(rargv, argc, argv, 6,
-           "--no-init-file",
-           "--no-splash",
-           "--name", "Portacle",
-           "--title", "Portacle");
+  char *rargv[argc + 6];
+
+  // Move emacsd into portacle directory on startup
+  // (without this, elpa packages are downloaded to ~/emacs.d/elpa)
+  char init_directory_arg[PATHLEN] = {0};
+  snprintf(init_directory_arg, PATHLEN, "--init-directory=%s", emacsd);
+
+  // Add default arguments
+  add_args(rargv, argc, argv, 7,
+            "--no-init-file",
+            "--no-splash",
+            "--name", "Portacle",
+            "--title", "Portacle",
+            init_directory_arg);
+
 
   // Ensure the console disappears on Windows.
 #ifdef WIN
@@ -114,7 +124,7 @@ int launch_emacs(char *root, int argc, char **argv){
 #endif
 
   pathcat(path, root, 4, PLATFORM, "emacs", "bin", "emacs");
-  return launch_maybe_ld(path, argc+6, rargv);
+  return launch_maybe_ld(path, argc+7, rargv);
 }
 
 int launch_git(char *root, int argc, char **argv){
